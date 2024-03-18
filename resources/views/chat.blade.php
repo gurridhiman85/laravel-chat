@@ -61,9 +61,10 @@
         <div class="chat-footer-1" style="height:150px">
         </div>
         <div class="chat-footer-2" style="display:none;">
-            <textarea name="message-to-send" id="message-to-send" placeholder ="Type your message" rows="3"></textarea>
+            <textarea name="message-to-send" id="message-to-send" placeholder ="Type your message" data-id="" rows="3"></textarea>
             <i class="fa fa-file-o"></i> &nbsp;&nbsp;&nbsp;
             <i class="fa fa-file-image-o"></i>
+            <button onclick="removeMessage(this)" id="removeMessage" style="color: #db8787; display:none;">Cancel</button>
             <button onclick="sendMessage()">Send</button>
         </div>
       </div> <!-- end chat-message -->

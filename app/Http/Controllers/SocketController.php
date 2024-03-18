@@ -57,24 +57,25 @@ class SocketController extends Controller implements MessageComponentInterface
         $data = json_decode($msg);
 
         if($data->type == 'request_send_message'){
-            $chat = new Chat;
-
-            $chat->senderId = $data->from_user_id;
-
-            $chat->receiverId = $data->to_user_id;
-
-            $chat->content = $data->message;
-
-            $chat->status = 0;
-
-            $chat->save();
+            if(!empty($data->chatId)){
+                $chat = Chat::find($data->chatId);
+                $chat->content = $data->message;
+                $chat->isEdited = 1;
+                $chat->save();
+            }else{
+                $chat = new Chat;
+                $chat->senderId = $data->from_user_id;
+                $chat->receiverId = $data->to_user_id;
+                $chat->content = $data->message;
+                $chat->status = 0;
+                $chat->save();
+            }
 
             $chat_message_id = $chat->id;
+            $showTime = date('g:i A',strtotime($chat->created_at));
+            $receiver_connection_id = User::select('name','connectionId')->where('id', $data->to_user_id)->first();
 
-            $receiver_connection_id = User::select('connectionId')->where('id', $data->to_user_id)->first();
-
-            $sender_connection_id = User::select('connectionId')->where('id', $data->from_user_id)->first();
-
+            $sender_connection_id = User::select('name','connectionId')->where('id', $data->from_user_id)->first();
 
             foreach ($this->clients as $client) {
                 if ($sender_connection_id->connectionId == $client->resourceId || $receiver_connection_id->connectionId == $client->resourceId) {
@@ -86,18 +87,23 @@ class SocketController extends Controller implements MessageComponentInterface
                     $send_data['from_user_id'] = $data->from_user_id;
 
                     $send_data['to_user_id'] = $data->to_user_id;
+                    $send_data['time'] = $showTime;
 
-                    if($client->resourceId == $receiver_connection_id->connectionId)
-                    {
-                        Chat::where('id', $chat_message_id)->update(['status' => 1]);
 
-                        $send_data['status'] = 1;
+                    if(!empty($data->chatId)){
+                        $send_data['type'] = 'edit_message';
+                    }else{
+                        if($client->resourceId == $receiver_connection_id->connectionId)
+                        {
+                            Chat::where('id', $chat_message_id)->update(['status' => 1]);
+                            $send_data['name'] = $receiver_connection_id->name;
+                            $send_data['status'] = 1;
+                        }
+                        else
+                        {
+                            $send_data['status'] = 0;
+                        }
                     }
-                    else
-                    {
-                        $send_data['status'] = 0;
-                    }
-
                     $client->send(json_encode($send_data));
                 }
             }
@@ -158,6 +164,34 @@ class SocketController extends Controller implements MessageComponentInterface
                 {
                     $client->send(json_encode($data));
                 }
+            }
+        }
+
+        if($data->type == 'delete_message'){
+            $chatDetails = Chat::with(['senderDetails','receriverDetails'])->where('id', $data->chatId)->first();
+            $chatDetails->deleteStatus = $data->deleteStatus;
+            $chatDetails->save();
+
+            $sendData['deleteStatus'] = $data->deleteStatus;
+            $sendData['senderId'] = $chatDetails->senderId;
+            $sendData['receiverId'] = $chatDetails->receiverId;
+            $sendData['type'] = $data->type;
+            $sendData['chatId'] = $data->chatId;
+
+            foreach($this->clients as $client)
+            {
+                if($data->deleteStatus == 1){
+                    if($client->resourceId == $chatDetails['senderDetails']['connectionId'])
+                    {
+                        $client->send(json_encode($sendData));
+                    }
+                }elseif($data->deleteStatus == 2){
+                    if($client->resourceId == $chatDetails['senderDetails']['connectionId'] || $client->resourceId == $chatDetails['receriverDetails']['connectionId'])
+                    {
+                        $client->send(json_encode($sendData));
+                    }
+                }
+
             }
         }
      }

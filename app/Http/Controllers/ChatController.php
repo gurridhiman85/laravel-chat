@@ -56,7 +56,7 @@ class ChatController extends Controller
             if(!empty($chats) && count($chats) > 0){
 
                 foreach($chats as $chat){
-                    $messageText = $chat['content'];
+                    $messageText = '<span class="messageText">'.$chat['content'].'</span>';
 
                     $senderId = $chat['senderId'];
                     $messageClass = ($senderId == $userId) ? 'sender' : 'receiver';
@@ -72,9 +72,14 @@ class ChatController extends Controller
                     }
                     $showTime = date('g:i A',strtotime($chat['created_at']));
 
-                    if($messageClass == 'sender'){
+                    $edit_text = '';
+                    if($chat['isEdited'] == 1){
+                        $edit_text = '<span class="messageEdited">(edited)</span>';
+                    }
 
+                    if($messageClass == 'sender'){
                         $icon_style;
+                        $options = '<i onclick="showMsgOption(this)" class="fa fa-ellipsis-v options-msg" aria-hidden="true"></i>';
                         if($chat['status'] == 0)
                         {
                             $icon_style = '<span id="chat_status_'.$chat['id'].'" class="float-end chat_status"><i class="fas fa-check text-muted"></i></span>';
@@ -84,9 +89,14 @@ class ChatController extends Controller
                             $icon_style = '<span id="chat_status_'.$chat['id'].'" class="float-end chat_status"><i class="fas fa-check-double text-muted"></i></span>';
                         }
 
-                        elseif($chat['status'] == 2)
-                        {
+                        elseif($chat['status'] == 2){
                             $icon_style = '<span class="text-primary float-end chat_status" id="chat_status_'.$chat['id'].'"><i class="fas fa-check-double double-check-primary"></i></span>';
+                        }
+                        $messageText = $messageText.''.$icon_style.''.$edit_text;
+                        $class = 'message-options-sender';
+                        if($chat['deleteStatus'] == 1 || $chat['deleteStatus'] == 2){
+                            $messageText = '<i class="fa fa-window-close" aria-hidden="true" style="font-size: 12px;"> &nbsp; You deleted this message.</i>';
+                            $class = '';
                         }
 
                         echo '<li class="clearfix">
@@ -94,15 +104,19 @@ class ChatController extends Controller
                                     <span class="message-data-time" >'.$showTime.', '.$showDate.'</span> &nbsp; &nbsp;
                                     <span class="message-data-name" >Me <i class="fa fa-circle me"></i></span>
                                 </div>
-                                <div class="message other-message float-right">'.$messageText.''.$icon_style.'</div>
+                                <div class="message other-message '.$class.' float-right" id="chatDiv'.$chat['id'].'">'.$messageText.'</div>
                             </li>';
                     }else{
+                        $messageText = $messageText.''.$edit_text;
+                        if($chat['deleteStatus'] == 2){
+                            $messageText = '<i class="fa fa-window-close" aria-hidden="true" style="font-size: 12px;"> &nbsp; This message was deleted.</i>';
+                        }
                         echo '<li>
                                 <div class="message-data">
-                                    <span class="message-data-name"><i class="fa fa-circle online"></i> '.$chat['receriver_details']['name'].'</span>
+                                    <span class="message-data-name"><i class="fa fa-circle online"></i> '.$chat['receriverDetails']['name'].'</span>
                                     <span class="message-data-time">'.$showTime.', '.$showDate.'</span>
                                 </div>
-                                <div class="message my-message">'.$messageText.'</div>
+                                <div class="message my-message" id="chatDiv'.$chat['id'].'">'.$messageText.'</div>
                             </li>';
                     }
                     // $date = $messgeDate;
